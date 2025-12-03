@@ -1,0 +1,27 @@
+import Job from "../../models/Job.js";
+import { fileProcessingQueue } from "../../queues/fileProcessing.queue.js";
+
+export const enqueueAiTextExtraction = async (req, res) => {
+  const { fileUrl } = req.body;
+
+  if (!fileUrl) {
+    return res.status(400).json({ message: "fileUrl is required" });
+  }
+
+  const jobDoc = await Job.create({
+    user: req.user._id,
+    type: "ai-extract-text",
+    fileUrl,
+    status: "queued",
+  });
+
+  await fileProcessingQueue.add("ai-extract-text", {
+    jobId: jobDoc._id.toString(),
+    fileUrl,
+  });
+
+  res.json({
+    message: "AI text extraction started",
+    jobId: jobDoc._id,
+  });
+};

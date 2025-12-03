@@ -24,4 +24,3 @@ router.post(
   uploadProjectAttachment,
 );
 export default router;
-

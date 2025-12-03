@@ -96,6 +96,3 @@ export const deleteTask = async (req, res) => {
   await redis.del(`tasks:${req.params.projectId}`);
   res.json({ message: "Soft deleted", task: updated });
 };
-
-
-

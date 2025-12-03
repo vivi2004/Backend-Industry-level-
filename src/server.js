@@ -11,7 +11,10 @@ import { globalLimiter } from "./middlewares/rateLimit.js";
 import { assignRequestId } from "./middlewares/requestId.js";
 import { logger } from "./utils/logger.js";
 import { versionWarning } from "./middlewares/versionWarning.js";
-
+import webhookRoutes from "./routes/v1/webhook.routes.js";
+import uploadProcessRoutes from "./routes/v1/uploadProcess.routes.js";
+import jobRoutes from "./routes/v1/job.routes.js";
+import aiRoutes from "./routes/v1/ai.routes.js";
 
 connectDB();
 const app = express();
@@ -22,6 +25,10 @@ app.use(globalLimiter);
 
 app.use(assignRequestId);
 app.use("/api/v1", versionWarning);
+app.use("/api/v1/webhooks", webhookRoutes);
+app.use("/api/v1/upload", uploadProcessRoutes);
+app.use("/api/v1/jobs", jobRoutes);
+app.use("/api/v1/ai", aiRoutes);
 
 app.use((req, res, next) => {
   req.startTime = Date.now();
@@ -66,5 +73,3 @@ app.listen(process.env.PORT, () => {
 });
 
 export default app;
-
-
