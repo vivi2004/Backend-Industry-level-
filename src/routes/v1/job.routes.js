@@ -5,7 +5,9 @@ import { authorize } from "../../middlewares/authorize.js";
 
 const router = Router();
 
-router.get("/:id", authenticate, authorize(["user", "admin"]), getJobById);
-router.get("/", authenticate, authorize(["user", "admin"]), getJobs);
+
+router.get("/:id", authenticate, authorize("user", "admin"), getJobById);
+router.get("/", authenticate, authorize("user", "admin"), getJobs);
+
 
 export default router;

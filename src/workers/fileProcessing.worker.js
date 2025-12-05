@@ -1,8 +1,9 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import { Worker } from "bullmq";
 import Redis from "ioredis";
-import axios from "axios";
-
-import OpenAI from "openai";
+import { OpenAI } from "openai/client.js";
 import axios from "axios";
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -20,7 +21,7 @@ async function handleAiTextExtraction(job) {
 
   // Send to OpenAI Vision
   const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: "gpt-5o-mini",
     messages: [
       {
         role: "user",

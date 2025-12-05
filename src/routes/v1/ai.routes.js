@@ -8,7 +8,7 @@ const router = Router();
 router.post(
   "/extract-text",
   authenticate,
-  authorize(["user", "admin"]),
+  authorize("user", "admin"),
   enqueueAiTextExtraction
 );
 
