@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
 
 import connectDB from "./config/db.js";
 import errorHandler from "./middlewares/errorHandler.js";
@@ -19,9 +20,27 @@ import aiRoutes from "./routes/v1/ai.routes.js";
 connectDB();
 const app = express();
 
-app.use(cors());
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://your-frontend.com"
+];
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true); // allow Postman / curl
+
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+  })
+);
 app.use(express.json());
-app.use(globalLimiter);
+app.use(helmet());
 
 app.use(assignRequestId);
 app.use("/api/v1", versionWarning);
@@ -45,6 +64,8 @@ app.use((req, res, next) => {
 
   next();
 });
+
+app.use(globalLimiter);
 
 app.get("/api/v1/health", (req, res) => {
   res.json({ status: "ok" });

@@ -7,6 +7,16 @@ const jobSchema = new mongoose.Schema(
     fileUrl: { type: String, required: true },
     processedUrl: { type: String },
     extractedText: { type: String },
+    summary: { type: String },
+
+         timeline: [
+      {
+        event: { type: String, required: true },
+        timestamp: { type: Date, default: Date.now }
+      }
+    ],
+
+    
     status: {
       type: String,
       enum: ["queued", "processing", "completed", "failed"],
