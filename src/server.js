@@ -16,6 +16,8 @@ import webhookRoutes from "./routes/v1/webhook.routes.js";
 import uploadProcessRoutes from "./routes/v1/uploadProcess.routes.js";
 import jobRoutes from "./routes/v1/job.routes.js";
 import aiRoutes from "./routes/v1/ai.routes.js";
+import swaggerUi from "swagger-ui-express";
+import { swaggerSpec } from "./config/swagger.js";
 
 connectDB();
 const app = express();
@@ -48,6 +50,7 @@ app.use("/api/v1/webhooks", webhookRoutes);
 app.use("/api/v1/upload", uploadProcessRoutes);
 app.use("/api/v1/jobs", jobRoutes);
 app.use("/api/v1/ai", aiRoutes);
+app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use((req, res, next) => {
   req.startTime = Date.now();
