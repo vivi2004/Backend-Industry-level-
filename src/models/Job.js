@@ -4,15 +4,25 @@ const jobSchema = new mongoose.Schema(
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     type: { type: String, required: true },
 
-    fileurl: { type: String, required: true },
-    processurl: { type: String },
-    extractText: { type: String },
+    fileUrl: { type: String, required: true },
+    processedUrl: { type: String },
+    extractedText: { type: String },
+    summary: { type: String },
+
+         timeline: [
+      {
+        event: { type: String, required: true },
+        timestamp: { type: Date, default: Date.now }
+      }
+    ],
+
+    
     status: {
       type: String,
-      enum: ["pending", "in-progress", "completed", "failed"],
+      enum: ["queued", "processing", "completed", "failed"],
       default: "queued",
     },
-    builJobId: { type: String },
+    bullJobId: { type: String },
     error: { type: String },
   },
   { timestamps: true },

@@ -1,6 +1,7 @@
 import Task from "../../models/Task.js";
 import Project from "../../models/Project.js";
 import redis from "../../config/redis.js";
+import { getPagination } from "../../utils/paginate.js";
 
 export const createTask = async (req, res) => {
   if (req.user.role !== "admin") {
@@ -30,21 +31,37 @@ export const getTasks = async (req, res) => {
       return res.status(403).json({ message: "Not allowed" });
     }
   }
-  const cacheKey = `tasks:${req.params.projectId}`;
+
+  const { page, limit, skip } = getPagination(req.query);
+
+  const cacheKey = `tasks:${req.params.projectId}:page:${page}:limit:${limit}`;
   const cached = await redis.get(cacheKey);
 
   if (cached) {
     return res.json(JSON.parse(cached));
   }
 
-  const tasks = await Task.find({
+  const filter = {
     project: req.params.projectId,
     deleteAt: null,
-  });
+  };
 
-  await redis.set(cacheKey, JSON.stringify(tasks), "EX", 10);
+  const [tasks, total] = await Promise.all([
+    Task.find(filter).skip(skip).limit(limit),
+    Task.countDocuments(filter),
+  ]);
 
-  res.json(tasks);
+  const response = {
+    page,
+    limit,
+    total,
+    totalPages: Math.ceil(total / limit),
+    data: tasks,
+  };
+
+  await redis.set(cacheKey, JSON.stringify(response), "EX", 10);
+
+  res.json(response);
 };
 
 export const updateTask = async (req, res) => {

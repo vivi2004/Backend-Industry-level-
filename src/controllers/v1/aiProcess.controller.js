@@ -20,8 +20,28 @@ export const enqueueAiTextExtraction = async (req, res) => {
     fileUrl,
   });
 
+
   res.json({
     message: "AI text extraction started",
     jobId: jobDoc._id,
+  });
+};
+
+
+export const enqueueAiSummarization = async (req, res) => {
+  const { jobId, text } = req.body;
+
+  if (!jobId || !text) {
+    return res.status(400).json({ message: "jobId and text are required" });
+  }
+
+  await fileProcessingQueue.add("ai-summarize", {
+    jobId,
+    text,
+  });
+
+  return res.json({
+    message: "AI summarization queued",
+    jobId,
   });
 };

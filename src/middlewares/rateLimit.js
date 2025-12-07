@@ -15,3 +15,11 @@ export const authLimiter = rateLimit({
     message: "Too many auth attempts. Please slow down.",
   },
 });
+
+export const uploadLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, // 10 minutes
+  max: 20, // Max 20 uploads per IP per window
+  message: {
+    message: "Upload rate exceeded. Please try again later.",
+  },
+});
