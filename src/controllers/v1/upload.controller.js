@@ -27,7 +27,7 @@ export const uploadProjectAttachment = async (req, res) => {
 
     // Upload to Cloudinary
     const result = await cloudinary.uploader.upload(req.file.path, {
-      folder: "tasks-api/projects",
+      folder: "tasks-api/projects"
     });
 
     await fs.unlink(req.file.path); // clean local temp file
@@ -86,7 +86,7 @@ export const uploadTaskAttachment = async (req, res) => {
     }
 
     const result = await cloudinary.uploader.upload(req.file.path, {
-      folder: "tasks-api/tasks",
+      folder: "tasks-api/tasks"
     });
 
     await fs.unlink(req.file.path);
