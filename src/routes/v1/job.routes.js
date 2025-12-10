@@ -1,9 +1,11 @@
 import { Router } from "express";
 import { getJobById, getJobs , getJobProgress ,streamJobProgress } from "../../controllers/v1/job.controller.js";
+import { cancelJob } from "../../controllers/v1/job.controller.js";
 import authenticate from "../../middlewares/auth.js";
 import { authorize } from "../../middlewares/authorize.js";
 import { validate } from "../../middlewares/validate.js";
 import { jobIdSchema } from "../../validations/job.validation.js";
+import { requireWorker } from "../../middlewares/workerAuth.js";
 
 const router = Router();
 
@@ -43,8 +45,7 @@ const router = Router();
  */
 router.get(
   "/:id",
-  authenticate,
-  authorize("user", "admin"),
+  requireWorker,
   validate(jobIdSchema),
   getJobById
 );
@@ -149,6 +150,41 @@ router.get(
   authorize("user", "admin"),
   validate(jobIdSchema),
   streamJobProgress
+);
+
+/**
+ * @swagger
+ * /jobs/{id}/cancel:
+ *   delete:
+ *     summary: Cancel an active job
+ *     tags: [Jobs]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Job ID to cancel
+ *     responses:
+ *       200:
+ *         description: Job cancelled successfully
+ *       400:
+ *         description: Job already completed or cannot be cancelled
+ *       401:
+ *         description: Unauthorized — login required
+ *       403:
+ *         description: Forbidden — you cannot cancel this job
+ *       404:
+ *         description: Job not found
+ *       500:
+ *         description: Server error
+ */
+router.delete(
+  "/:id/cancel",
+  authenticate,
+  authorize("user", "admin"),
+  validate(jobIdSchema),
+  cancelJob
 );
 
 export default router;

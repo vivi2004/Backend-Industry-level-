@@ -35,6 +35,17 @@ export const enqueueAiSummarization = async (req, res) => {
     return res.status(400).json({ message: "jobId and text are required" });
   }
 
+  // Worker is calling this, so update job status directly
+  await Job.findByIdAndUpdate(jobId, {
+    status: "summarizing",
+    $push: {
+      timeline: {
+        event: "summarization_queued",
+        timestamp: new Date(),
+      },
+    },
+  });
+
   await fileProcessingQueue.add("ai-summarize", {
     jobId,
     text,

@@ -4,12 +4,31 @@ dotenv.config();
 import { Worker } from "bullmq";
 import Redis from "ioredis";
 import { OpenAI } from "openai/client.js";
-import axios from "axios";
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+import axios from "axios";
 
-async function downloadBuffer(url) {
-  const res = await axios.get(url, { responseType: "arraybuffer" });
-  return Buffer.from(res.data);
+import Tesseract from "tesseract.js";
+import fs from "fs";
+import path from "path";
+
+async function checkCancellation(jobId) {
+  try {
+    const res = await axios.get(`http://localhost:4000/api/v1/jobs/${jobId}`, {
+      headers: { "x-worker-secret": process.env.WORKER_SECRET }
+    });
+    if (res.data.job?.cancelRequested || res.data.job?.status === "cancelled") {
+      await axios.post("http://localhost:4000/api/v1/webhooks/file-processed", {
+        jobId,
+        event: "job_cancelled",
+      }, {
+        headers: { "x-worker-secret": process.env.WORKER_SECRET }
+      });
+      return true;
+    }
+  } catch (err) {
+    console.error("Cancellation check error:", err.message);
+  }
+  return false;
 }
 
 async function handleAiTextExtraction(job) {
@@ -17,80 +36,119 @@ async function handleAiTextExtraction(job) {
 
   await axios.post("http://localhost:4000/api/v1/webhooks/file-processed", {
     jobId,
-    event: "extraction_started"
+    event: "extraction_started",
+  }, {
+    headers: { "x-worker-secret": process.env.WORKER_SECRET }
   });
 
-  // Download image/PDF page from Cloudinary
-  const buffer = await downloadBuffer(fileUrl);
-  const base64 = buffer.toString("base64");
+  if (await checkCancellation(jobId)) return { status: "cancelled" };
 
-  // Send to OpenAI Vision
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    messages: [
-      {
-        role: "user",
-        content: [
-          {
-            type: "input_text",
-            text: "Extract all readable text from this file.",
-          },
-          {
-            type: "input_image",
-            image_url: `data:image/jpeg;base64,${base64}`,
-          },
-        ],
+  // 1. Download file locally
+  const downloadPath = path.join("/tmp", `ocr_${Date.now()}.png`);
+  fs.mkdirSync("/tmp", { recursive: true });
+  const file = fs.createWriteStream(downloadPath);
+
+  const response = await axios({
+    url: fileUrl,
+    method: "GET",
+    responseType: "stream",
+  });
+
+  await new Promise((resolve, reject) => {
+    response.data.pipe(file);
+    file.on("finish", resolve);
+    file.on("error", reject);
+  });
+
+  // 2. Run Tesseract OCR with progress updates
+  let ocrText = "";
+
+  await new Promise((resolve, reject) => {
+    Tesseract.recognize(downloadPath, "eng", {
+      logger: async (m) => {
+        if (m.status.includes("recognizing")) {
+          if (await checkCancellation(jobId)) return;
+
+          const progress = Math.round(m.progress * 100);
+
+          try {
+            await axios.post("http://localhost:4000/api/v1/webhooks/file-processed", {
+              jobId,
+              event: "ocr_progress",
+              data: { progress }
+            }, {
+              headers: { "x-worker-secret": process.env.WORKER_SECRET }
+            });
+          } catch (err) {
+            console.error("Failed to send OCR progress:", err.message);
+          }
+        }
       },
-    ],
+    })
+      .then(({ data }) => {
+        ocrText = data.text.trim();
+        resolve();
+      })
+      .catch(reject);
   });
 
-  const extractedText = completion.choices[0].message.content;
+  if (!ocrText) {
+    throw new Error("No text extracted by Tesseract");
+  }
 
   await axios.post("http://localhost:4000/api/v1/webhooks/file-processed", {
     jobId,
-    event: "extraction_completed"
+    event: "extraction_completed",
+    data: { extractedText: ocrText },
+  }, {
+    headers: { "x-worker-secret": process.env.WORKER_SECRET }
   });
 
-  // Send webhook update
-  await axios.post("http://localhost:4000/api/v1/webhooks/file-processed", {
+  // 3. Trigger summarization job
+  await axios.post("http://localhost:4000/api/v1/ai/summarize", {
     jobId,
-    fileUrl,
-    extractedText,
+    text: ocrText,
+  }, {
+    headers: { "x-worker-secret": process.env.WORKER_SECRET }
   });
 
-  return extractedText;
+  // Cleanup
+  fs.unlink(downloadPath, () => {});
+
+  return ocrText;
 }
 
 
 
 async function handleAiSummarization(job) { 
-  const { text , jobId } = job.data;
+  const { text, jobId } = job.data;
+
+  if (!text) {
+    throw new Error("No extracted text provided for summarization");
+  }
 
   await axios.post("http://localhost:4000/api/v1/webhooks/file-processed", {
     jobId,
-    event: "summarization_started"
+    event: "summarization_started",
+  }, {
+    headers: { "x-worker-secret": process.env.WORKER_SECRET }
   });
 
-  const completion = await openai.chat.completions.create({
+  if (await checkCancellation(jobId)) return { status: "cancelled" };
+
+  const response = await openai.responses.create({
     model: "gpt-4o-mini",
-    messages: [
-      {
-        role: "user",
-        content: `Summarize the following text in 5–7 bullet points:\n\n${text}`,
-      },
-    ],
+    input: `Summarize the following text in 5-7 bullet points:\n\n${text}`
   });
 
-  const summary = completion.choices[0].message.content;
+  const summary = response.output_text || "";
 
   await axios.post("http://localhost:4000/api/v1/webhooks/file-processed", {
     jobId,
-    event: "summarization_completed"
-  });
-
-  await axios.post("http://localhost:4000/api/v1/webhooks/file-processed", {
-    jobId,
-    summary,
+    event: "summarization_completed",
+    data: { summary }
+  }, {
+    headers: { "x-worker-secret": process.env.WORKER_SECRET }
   });
 
   return summary;
@@ -105,6 +163,10 @@ const connection = new Redis({
 const worker = new Worker(
   "file-processing",
   async (job) => {
+    if (await checkCancellation(job.data.jobId)) {
+      console.log("Job cancelled before processing:", job.id);
+      return { status: "cancelled" };
+    }
 
     console.log("Processing job:", job.id, "mongoJobId:", job.data.jobId);
      if(job.name === "ai-extract-text") {
@@ -114,21 +176,7 @@ const worker = new Worker(
       return await handleAiSummarization(job);
      }
      
-    // Simulate file processing
-    await new Promise((res) => setTimeout(res, 3000));
-
-    console.log("Processing complete for:", job.data.fileUrl);
-    const processedUrl = job.data.fileUrl + "?processed=true";
-
-
-    // Send webhook callback to main API
-    await axios.post("http://localhost:4000/api/v1/webhooks/file-processed", {
-      jobId: job.data.jobId,
-      fileUrl: job.data.fileUrl,
-      processedUrl,
-    });
-
-    return { status: "done" };
+    return { status: "noop" };
   },
   { connection },
 );

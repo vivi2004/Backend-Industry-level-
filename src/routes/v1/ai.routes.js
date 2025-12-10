@@ -11,11 +11,8 @@ import {
   aiSummarizeSchema,
 } from "../../validations/ai.validation.js";
 import  {authLimiter}  from "../../middlewares/rateLimit.js";
-
+import { requireWorker } from "../../middlewares/workerAuth.js";
 const router = Router();
-
-router.post("/login", authLimiter);
-router.post("/register", authLimiter);
 
 /**
  * @swagger
@@ -62,8 +59,10 @@ router.post(
  * @swagger
  * /ai/summarize:
  *   post:
- *     summary: Generate AI summary from extracted text
+ *     summary: Worker-only — generate AI summary from extracted text
  *     tags: [AI]
+ *     security:
+ *       - WorkerSecret: []
  *     requestBody:
  *       required: true
  *       content:
@@ -84,12 +83,12 @@ router.post(
  *       401:
  *         description: Unauthorized
  */
+
 router.post(
   "/summarize",
-  authenticate,
-  authorize("user", "admin"),
+  requireWorker,
   validate(aiSummarizeSchema),
-  enqueueAiSummarization,
+  enqueueAiSummarization
 );
 
 export default router;
