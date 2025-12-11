@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getJobById, getJobs , getJobProgress ,streamJobProgress } from "../../controllers/v1/job.controller.js";
+import { getJobById, getJobs , getJobProgress ,streamJobProgress ,checkCancelStatus } from "../../controllers/v1/job.controller.js";
 import { cancelJob } from "../../controllers/v1/job.controller.js";
 import authenticate from "../../middlewares/auth.js";
 import { authorize } from "../../middlewares/authorize.js";
@@ -186,5 +186,7 @@ router.delete(
   validate(jobIdSchema),
   cancelJob
 );
+
+router.get("/:id/should-cancel", requireWorker, checkCancelStatus);
 
 export default router;

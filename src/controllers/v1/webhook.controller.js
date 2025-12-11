@@ -11,46 +11,33 @@ const validateWorkerSecret = (req) => {
 
 export const fileProcessedWebhook = async (req, res) => {
   try {
-    // Reject requests that are not from the worker
+    // Only worker is allowed
     if (!validateWorkerSecret(req)) {
       return res.status(401).json({ message: "Unauthorized worker" });
     }
 
-    const { jobId, extractedText, summary, progress, event, error, data } = req.body;
+    let { jobId, extractedText, summary, progress, event, error, data } = req.body;
+
+    // Support deeply nested payloads from worker
     const payload = data || {};
 
-    const finalExtractedText =
-      typeof extractedText === "string" && extractedText.length
-        ? extractedText
-        : typeof payload.extractedText === "string"
-        ? payload.extractedText
-        : undefined;
-
-    const finalSummary =
-      typeof summary === "string" && summary.length
-        ? summary
-        : typeof payload.summary === "string"
-        ? payload.summary
-        : undefined;
-
-    const finalProgress =
-      typeof progress === "number"
-        ? progress
-        : typeof payload.progress === "number"
-        ? payload.progress
-        : undefined;
+    if (!jobId) jobId = payload.jobId;
+    if (!extractedText) extractedText = payload.extractedText;
+    if (!summary) summary = payload.summary;
+    if (typeof progress !== "number" && typeof payload.progress === "number") {
+      progress = payload.progress;
+    }
 
     if (!jobId) {
       return res.status(400).json({ message: "jobId is required" });
     }
 
-    // Timeline logging
+    // Record timeline events
     if (event) {
       await Job.findByIdAndUpdate(jobId, {
         $push: { timeline: { event, timestamp: new Date() } }
       });
 
-      // Cancellation from worker
       if (event === "job_cancelled") {
         await Job.findByIdAndUpdate(jobId, { status: "cancelled" });
         return res.json({ message: "Job cancelled", jobId, status: "cancelled" });
@@ -59,43 +46,61 @@ export const fileProcessedWebhook = async (req, res) => {
 
     const update = {};
 
-    // Worker error
+    // Worker-side error
     if (error) {
       update.status = "failed";
       update.error = error;
     }
 
-    // OCR progress (not job status change)
-    if (typeof finalProgress === "number") {
-      await Job.findByIdAndUpdate(jobId, { progress: finalProgress });
+    // OCR progress
+    if (typeof progress === "number") {
+      await Job.findByIdAndUpdate(jobId, { progress });
     }
 
-    // OCR result
-    if (!error && finalExtractedText) {
-      update.extractedText = finalExtractedText;
+    // OCR text extraction
+    if (!error && typeof extractedText === "string" && extractedText.trim().length > 0) {
+      update.extractedText = extractedText.trim();
       update.status = "extracted";
     }
 
-    // Summary result
-    if (!error && finalSummary) {
-      update.summary = finalSummary;
+    // AI summary result
+    if (!error && typeof summary === "string" && summary.trim().length > 0) {
+      update.summary = summary.trim();
       update.status = "completed";
+
+      // Optional: send email notification
+      try {
+        const job = await Job.findById(jobId).populate("user");
+        if (job?.user?.email) {
+          sendJobCompletedEmail(job.user.email, summary);
+        }
+      } catch (emailErr) {
+        console.warn("Email sending failed:", emailErr);
+      }
     }
 
-    const job = await Job.findByIdAndUpdate(jobId, update, { new: true });
-    if (!job) {
+    // Apply updates
+    const updatedJob = await Job.findByIdAndUpdate(jobId, update, { new: true });
+    if (!updatedJob) {
       return res.status(404).json({ message: "Job not found" });
     }
 
-    // Auto-run summarization when OCR is done but summary missing
-    if (!error && finalExtractedText && !finalSummary) {
-      await fileProcessingQueue.add("ai-summarize", { jobId, text: finalExtractedText });
+    // Auto-trigger summarization once OCR completes
+    if (
+      !error &&
+      extractedText &&
+      (!summary || summary.trim().length === 0)
+    ) {
+      await fileProcessingQueue.add("ai-summarize", {
+        jobId,
+        text: extractedText
+      });
     }
 
     return res.json({
-      message: "Webhook processed",
+      message: "Webhook processed successfully",
       jobId,
-      status: update.status || job.status || "processing"
+      status: updatedJob.status
     });
 
   } catch (err) {

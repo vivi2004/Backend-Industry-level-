@@ -13,20 +13,23 @@ import path from "path";
 
 async function checkCancellation(jobId) {
   try {
-    const res = await axios.get(`http://localhost:4000/api/v1/jobs/${jobId}`, {
-      headers: { "x-worker-secret": process.env.WORKER_SECRET }
-    });
-    if (res.data.job?.cancelRequested || res.data.job?.status === "cancelled") {
-      await axios.post("http://localhost:4000/api/v1/webhooks/file-processed", {
-        jobId,
-        event: "job_cancelled",
-      }, {
-        headers: { "x-worker-secret": process.env.WORKER_SECRET }
-      });
+    const res = await axios.get(
+      `http://localhost:4000/api/v1/jobs/${jobId}/should-cancel`,
+      {
+        headers: { "x-worker-secret": process.env.WORKER_SECRET },
+      }
+    );
+
+    if (res.data.shouldCancel === true) {
+      await axios.post(
+        "http://localhost:4000/api/v1/webhooks/file-processed",
+        { jobId, event: "job_cancelled" },
+        { headers: { "x-worker-secret": process.env.WORKER_SECRET } }
+      );
       return true;
     }
   } catch (err) {
-    console.error("Cancellation check error:", err.message);
+    console.error("Cancellation check error:", err.response?.data || err.message);
   }
   return false;
 }
@@ -75,7 +78,7 @@ async function handleAiTextExtraction(job) {
             await axios.post("http://localhost:4000/api/v1/webhooks/file-processed", {
               jobId,
               event: "ocr_progress",
-              data: { progress }
+              progress
             }, {
               headers: { "x-worker-secret": process.env.WORKER_SECRET }
             });
@@ -123,8 +126,8 @@ async function handleAiTextExtraction(job) {
 async function handleAiSummarization(job) { 
   const { text, jobId } = job.data;
 
-  if (!text) {
-    throw new Error("No extracted text provided for summarization");
+  if (!text || text.trim().length === 0) {
+    return { status: "no_text" };
   }
 
   await axios.post("http://localhost:4000/api/v1/webhooks/file-processed", {
