@@ -334,3 +334,20 @@ export const cancelJob = async (req, res) => {
     return res.status(500).json({ message: "Server error" });
   }
 };
+
+export const checkCancelStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const job = await Job.findById(id);
+    if (!job) {
+      return res.status(404).json({ message: "Job not found" });
+    }
+
+    // worker checks this every second
+    return res.json({ cancel: job.status === "cancelled" });
+  } catch (err) {
+    console.error("checkCancelStatus error:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
