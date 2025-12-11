@@ -1,6 +1,4 @@
-Sure, here is the complete README.md for your backend — clean, professional, and ready to paste directly into your project.
 
-⸻
 
 Tasks Project API — Backend
 
