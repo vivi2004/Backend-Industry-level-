@@ -50,45 +50,8 @@ const router = Router();
 router.post(
   "/extract-text",
   authenticate,
-  authorize("user", "admin"),
-  validate(aiExtractSchema),
+  authorize(["user", "admin"]),
   enqueueAiTextExtraction,
-);
-
-/**
- * @swagger
- * /ai/summarize:
- *   post:
- *     summary: Worker-only — generate AI summary from extracted text
- *     tags: [AI]
- *     security:
- *       - WorkerSecret: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - text
- *             properties:
- *               text:
- *                 type: string
- *                 example: "Your extracted text here..."
- *     responses:
- *       200:
- *         description: AI summarization job queued
- *       400:
- *         description: Validation error
- *       401:
- *         description: Unauthorized
- */
-
-router.post(
-  "/summarize",
-  requireWorker,
-  validate(aiSummarizeSchema),
-  enqueueAiSummarization
 );
 
 export default router;

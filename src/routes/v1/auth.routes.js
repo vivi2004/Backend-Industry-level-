@@ -1,55 +1,11 @@
 import { Router } from "express";
-import { register, login } from "../../controllers/v1/auth.controller.js";
-import { logout, refresh } from "../../controllers/v1/auth.controller.js";
+import { register, login, logout, refresh, getMe } from "../../controllers/v1/auth.controller.js";
 import { authLimiter } from "../../middlewares/rateLimit.js";
-import { validate } from "../../middlewares/validate.js";
-import {
-  registerSchema,
-  loginSchema,
-  refreshTokenSchema,
-} from "../../validations/auth.validation.js";
+import    auth   from "../../middlewares/auth.js";
+import passport from "passport";
 
-/**
- * @swagger
- * tags:
- *   name: Auth
- *   description: Authentication endpoints
- */
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
-/**
- * @swagger
- * /auth/register:
- *   post:
- *     summary: Register a new user
- *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - name
- *               - email
- *               - password
- *             properties:
- *               name:
- *                 type: string
- *                 example: Ravi Kant
- *               email:
- *                 type: string
- *                 example: user24@gmail.com
- *               password:
- *                 type: string
- *                 example: Pass1234!
- *     responses:
- *       201:
- *         description: User registered successfully
- *       400:
- *         description: Validation error
- *       409:
- *         description: Email already exists
- */
 const router = Router();
 router.post("/register", authLimiter, validate(registerSchema), register);
 
@@ -122,4 +78,33 @@ router.post("/refresh", validate(refreshTokenSchema), refresh);
  *         description: Unauthorized
  */
 router.post("/logout", logout);
+router.get("/me", auth, getMe);
+
+// Google OAuth
+router.get(
+  "/google",
+  passport.authenticate("google", {
+    scope: ["profile", "email"],
+  })
+);
+
+router.get(
+  "/google/callback",
+  passport.authenticate("google", {
+    session: false,
+    failureRedirect: `${FRONTEND_URL}/login`,
+  }),
+  (req, res) => {
+    const token = req.user?.token;
+
+    res.cookie("accessToken", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+    });
+
+    res.redirect(`${FRONTEND_URL}/dashboard`);
+  }
+);
+
 export default router;

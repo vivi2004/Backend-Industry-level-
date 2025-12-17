@@ -16,30 +16,17 @@ import webhookRoutes from "./routes/v1/webhook.routes.js";
 import uploadProcessRoutes from "./routes/v1/uploadProcess.routes.js";
 import jobRoutes from "./routes/v1/job.routes.js";
 import aiRoutes from "./routes/v1/ai.routes.js";
-import swaggerUi from "swagger-ui-express";
-import { swaggerSpec } from "./config/swagger.js";
+import passport from "./config/password.js";
+
 
 connectDB();
 const app = express();
 
-const allowedOrigins = [
-  "http://localhost:5173",
-  "https://your-frontend.com"
-];
-
 app.use(
   cors({
-    origin: function (origin, callback) {
-      if (!origin) return callback(null, true); // allow Postman / curl
-
-      if (allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
+    origin: "http://localhost:5173",
     credentials: true,
-  })
+  }),
 );
 app.use(express.json());
 app.use(helmet());
@@ -50,7 +37,7 @@ app.use("/api/v1/webhooks", webhookRoutes);
 app.use("/api/v1/upload", uploadProcessRoutes);
 app.use("/api/v1/jobs", jobRoutes);
 app.use("/api/v1/ai", aiRoutes);
-app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use(passport.initialize());
 
 app.use((req, res, next) => {
   req.startTime = Date.now();

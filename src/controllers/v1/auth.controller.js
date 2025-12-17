@@ -8,7 +8,7 @@ import Token from "../../models/Token.js";
 import jwt from "jsonwebtoken";
 
 export const register = async (req, res) => {
-  console.log("HIT REGISTER");
+  
   try {
     const { name, email, password } = req.body;
     const hashed = await bcrypt.hash(password, 10);
@@ -65,4 +65,12 @@ export const logout = async (req, res) => {
   const { refreshToken } = req.body;
   await Token.findOneAndDelete({ refreshToken });
   res.json({ message: "Logged out successfully." });
+};
+
+
+
+export const getMe = async (req, res) => {
+  res.status(200).json({
+    user: req.user,
+  });
 };

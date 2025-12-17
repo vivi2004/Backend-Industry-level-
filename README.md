@@ -194,14 +194,14 @@ Built with Node.js, Express, MongoDB, BullMQ, Redis, Cloudinary, Tesseract OCR, 
 
 ## 📦 Tech Stack
 
-- Node.js + Express  
-- MongoDB + Mongoose  
-- Redis + BullMQ  
-- Tesseract OCR  
-- Cloudinary uploads  
-- OpenAI API  
-- Server-Sent Events (SSE)  
-- Worker authentication using secrets  
+- Node.js + Express
+- MongoDB + Mongoose
+- Redis + BullMQ
+- Tesseract OCR
+- Cloudinary uploads
+- OpenAI API
+- Server-Sent Events (SSE)
+- Worker authentication using secrets
 
 ## 📁 Folder Structure
 
@@ -294,13 +294,16 @@ node src/workers/fileProcessing.worker.js
 
 ## 🔐 Auth
 
-### Register  
+### Register
+
 POST `/api/v1/auth/register`
 
-### Login  
+### Login
+
 POST `/api/v1/auth/login`
 
-### Refresh Token  
+### Refresh Token
+
 POST `/api/v1/auth/refresh-token`
 
 ## 📂 OCR Extraction
@@ -362,13 +365,13 @@ POST `/api/v1/projects/:projectId/tasks/:taskId/attachments`
 
 # 🔄 Processing Flow
 
-1. User uploads file → job created  
-2. Worker downloads file  
-3. OCR extraction with progress  
-4. Worker triggers summarization  
-5. API stores summary  
-6. SSE streams updates  
-7. Job completes  
+1. User uploads file → job created
+2. Worker downloads file
+3. OCR extraction with progress
+4. Worker triggers summarization
+5. API stores summary
+6. SSE streams updates
+7. Job completes
 
 # 🔐 Worker Security
 
@@ -384,10 +387,10 @@ Works with Render, Railway, AWS, Docker.
 
 You must configure:
 
-- MongoDB Atlas  
-- Redis  
-- Cloudinary  
-- OpenAI  
+- MongoDB Atlas
+- Redis
+- Cloudinary
+- OpenAI
 
 # 🎉 Done
 
