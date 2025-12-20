@@ -1,5 +1,5 @@
 
-=======
+
 # Tasks Project API – Backend
 
 A backend service for managing projects, tasks, file processing, OCR extraction, and AI summarization.  
