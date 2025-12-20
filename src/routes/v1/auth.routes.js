@@ -1,8 +1,11 @@
 import { Router } from "express";
 import { register, login, logout, refresh, getMe } from "../../controllers/v1/auth.controller.js";
 import { authLimiter } from "../../middlewares/rateLimit.js";
-import    auth   from "../../middlewares/auth.js";
+import { validate } from "../../middlewares/validate.js";
+import { registerSchema, loginSchema, refreshTokenSchema } from "../../validations/auth.validation.js";
+import auth from "../../middlewares/auth.js";
 import passport from "passport";
+
 
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
