@@ -3,6 +3,35 @@ import cloudinary from "../../config/cloudinary.js";
 import Project from "../../models/Project.js";
 import Task from "../../models/Task.js";
 
+export const uploadJobFile = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    const result = await cloudinary.uploader.upload(req.file.path, {
+      folder: "tasks-api/jobs",
+      resource_type: "auto",
+    });
+
+    await fs.unlink(req.file.path); // clean local temp file
+
+    return res.json({
+      message: "File uploaded",
+      fileUrl: result.secure_url,
+      publicId: result.public_id,
+      format: result.format,
+      bytes: result.bytes,
+    });
+  } catch (err) {
+    console.error(err);
+    if (req.file?.path) {
+      await fs.unlink(req.file.path).catch(() => {});
+    }
+    return res.status(500).json({ message: "Upload failed" });
+  }
+};
+
 export const uploadProjectAttachment = async (req, res) => {
   try {
     const { id: projectId } = req.params;
