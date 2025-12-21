@@ -8,7 +8,6 @@ import Token from "../../models/Token.js";
 import jwt from "jsonwebtoken";
 
 export const register = async (req, res) => {
-  
   try {
     const { name, email, password } = req.body;
     const hashed = await bcrypt.hash(password, 10);
@@ -16,7 +15,14 @@ export const register = async (req, res) => {
     const accessToken = generateAccessToken(user._id);
     const refreshToken = generateRefreshToken(user._id);
     await Token.create({ user: user._id, refreshToken });
-    res.json({ accessToken, refreshToken });
+    
+    // Return user data along with tokens
+    const { password: _, ...userWithoutPassword } = user.toObject();
+    res.json({ 
+      accessToken, 
+      refreshToken,
+      user: userWithoutPassword
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });
@@ -24,18 +30,29 @@ export const register = async (req, res) => {
 };
 
 export const login = async (req, res) => {
-  const { email, password } = req.body;
-  const user = await User.findOne({ email });
-  if (!user) return res.status(400).json({ message: "Invalid" });
+  try {
+    const { email, password } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ message: "Invalid credentials" });
 
-  const match = await bcrypt.compare(password, user.password);
-  if (!match) return res.status(400).json({ message: "Invalid" });
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) return res.status(400).json({ message: "Invalid credentials" });
 
-  const accessToken = generateAccessToken(user._id);
-  const refreshToken = generateRefreshToken(user._id);
-  await Token.create({ user: user._id, refreshToken });
+    const accessToken = generateAccessToken(user._id);
+    const refreshToken = generateRefreshToken(user._id);
+    await Token.create({ user: user._id, refreshToken });
 
-  res.json({ accessToken, refreshToken });
+    // Return user data along with tokens
+    const { password: _, ...userWithoutPassword } = user.toObject();
+    res.json({ 
+      accessToken, 
+      refreshToken,
+      user: userWithoutPassword
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
 };
 
 export const refresh = async (req, res) => {
