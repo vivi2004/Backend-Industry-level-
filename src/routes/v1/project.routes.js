@@ -4,6 +4,7 @@ import { authorize } from "../../middlewares/authorize.js";
 import {
   createProject,
   getProjects,
+  getProjectById,
   updateProject,
   deleteProject,
 } from "../../controllers/v1/project.controller.js";
@@ -79,6 +80,13 @@ router.get(
   "/",
   authorize("admin", "user"),
   getProjects
+);
+
+router.get(
+  "/:id",
+  authorize("admin", "user"),
+  validate(projectIdSchema),
+  getProjectById
 );
 
 /**

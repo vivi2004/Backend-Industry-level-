@@ -45,7 +45,8 @@ const router = Router();
  */
 router.get(
   "/:id",
-  requireWorker,
+  authenticate,
+  authorize("user", "admin"),
   validate(jobIdSchema),
   getJobById
 );

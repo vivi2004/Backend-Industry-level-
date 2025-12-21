@@ -30,6 +30,20 @@ export const getProjects = async (req, res) => {
   res.json(projects);
 };
 
+export const getProjectById = async (req, res) => {
+  const filter =
+    req.user.role === "admin"
+      ? { _id: req.params.id }
+      : { _id: req.params.id, owner: req.user._id };
+
+  const project = await Project.findOne(filter);
+  if (!project) {
+    return res.status(404).json({ message: "Project not found or not allowed" });
+  }
+
+  res.json(project);
+};
+
 export const updateProject = async (req, res) => {
   const updated = await Project.findOneAndUpdate(
     req.user.role === "admin"
