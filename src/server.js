@@ -32,6 +32,14 @@ app.use(
         return callback(null, true);
       }
 
+      // Allow LAN access during development (e.g. http://192.168.x.x:5173 or http://10.x.x.x:5173)
+      if (process.env.NODE_ENV !== "production") {
+        const isLanHttpOrigin = /^http:\/\/\d{1,3}(?:\.\d{1,3}){3}:\d+$/.test(origin);
+        if (isLanHttpOrigin) {
+          return callback(null, true);
+        }
+      }
+
       return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
@@ -88,8 +96,10 @@ app.use((err, req, res, next) => {
   });
 });
 
-app.listen(process.env.PORT, () => {
-  console.log(`Server running on port ${process.env.PORT}`);
+const PORT = Number(process.env.PORT) || 4000;
+
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server running on port ${PORT}`);
 });
 
 export default app;
