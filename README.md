@@ -207,15 +207,5 @@ Worker must send:
 x-worker-secret: supersecret123
 ```
 
-# 🚀 Deployment
-
-Works with Render, Railway, AWS, Docker.
-
-You must configure:
-
-- MongoDB Atlas
-- Redis
-- Cloudinary
-- OpenAI
 
 
