@@ -16,13 +16,20 @@ export const enqueueFileProcessing = async (req, res) => {
     status: "queued",
   });
 
-  const job = await fileProcessingQueue.add("file-processing", {
-    fileUrl,
-    jobId: jobDoc._id.toString(),
-  });
+  if (fileProcessingQueue) {
+    const job = await fileProcessingQueue.add("file-processing", {
+      fileUrl,
+      jobId: jobDoc._id.toString(),
+    });
 
-  jobDoc.builJobId = job.id.toString();
-  await jobDoc.save();
+    jobDoc.builJobId = job.id.toString();
+    await jobDoc.save();
+  } else {
+    console.log("Queue disabled - file processing skipped in production");
+    jobDoc.status = "failed";
+    jobDoc.error = "Queue disabled in production";
+    await jobDoc.save();
+  }
 
   res.json({
     message: "File processing started",

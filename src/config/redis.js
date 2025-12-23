@@ -1,16 +1,27 @@
 import Redis from "ioredis";
 
-const redis = new Redis({
-  host: "127.0.0.1",
-  port: 6379,
-});
+// Redis only runs locally, not in production (Render)
+const isProduction = process.env.NODE_ENV === "production";
 
-redis.on("connect", () => {
-  console.log("Redis connected");
-});
+let redis = null;
 
-redis.on("error", (err) => {
-  console.error("Redis error:", err);
-});
+if (!isProduction) {
+  redis = new Redis({
+    host: "127.0.0.1",
+    port: 6379,
+    retryDelayOnFailover: 100,
+    maxRetriesPerRequest: 3,
+  });
+
+  redis.on("connect", () => {
+    console.log("Redis connected (development only)");
+  });
+
+  redis.on("error", (err) => {
+    console.error("Redis error:", err);
+  });
+} else {
+  console.log("Redis disabled in production");
+}
 
 export default redis;

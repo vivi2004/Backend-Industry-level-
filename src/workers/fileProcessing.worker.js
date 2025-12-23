@@ -157,15 +157,21 @@ async function handleAiSummarization(job) {
   return summary;
 }
 
-const connection = new Redis({
-  host: "127.0.0.1",
-  port: 6379,
-  maxRetriesPerRequest: null,
-});
+// Skip Redis in production (Render)
+const isProduction = process.env.NODE_ENV === "production";
+let connection = null;
+let worker = null;
 
-const worker = new Worker(
-  "file-processing",
-  async (job) => {
+if (!isProduction) {
+  connection = new Redis({
+    host: "127.0.0.1",
+    port: 6379,
+    maxRetriesPerRequest: null,
+  });
+
+  worker = new Worker(
+    "file-processing",
+    async (job) => {
     if (await checkCancellation(job.data.jobId)) {
       console.log("Job cancelled before processing:", job.id);
       return { status: "cancelled" };
@@ -191,3 +197,6 @@ worker.on("completed", (job) => {
 worker.on("failed", (job, err) => {
   console.error(`Job failed: ${job.id}`, err);
 });
+} else {
+  console.log("Worker disabled in production");
+}

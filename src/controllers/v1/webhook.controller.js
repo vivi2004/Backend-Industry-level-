@@ -91,10 +91,14 @@ export const fileProcessedWebhook = async (req, res) => {
       extractedText &&
       (!summary || summary.trim().length === 0)
     ) {
+      if (fileProcessingQueue) {
       await fileProcessingQueue.add("ai-summarize", {
         jobId,
         text: extractedText
       });
+    } else {
+      console.log("Queue disabled - summarization skipped in webhook");
+    }
     }
 
     return res.json({

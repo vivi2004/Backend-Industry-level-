@@ -15,10 +15,15 @@ export const enqueueAiTextExtraction = async (req, res) => {
     status: "queued",
   });
 
-  await fileProcessingQueue.add("ai-extract-text", {
-    jobId: jobDoc._id.toString(),
-    fileUrl,
-  });
+  if (fileProcessingQueue) {
+    await fileProcessingQueue.add("ai-extract-text", {
+      jobId: jobDoc._id.toString(),
+      fileUrl,
+    });
+  } else {
+    console.log("Queue disabled - processing synchronously");
+    // In production, you might want to process synchronously or skip
+  }
 
 
   res.json({
@@ -46,10 +51,14 @@ export const enqueueAiSummarization = async (req, res) => {
     },
   });
 
-  await fileProcessingQueue.add("ai-summarize", {
-    jobId,
-    text,
-  });
+  if (fileProcessingQueue) {
+    await fileProcessingQueue.add("ai-summarize", {
+      jobId,
+      text,
+    });
+  } else {
+    console.log("Queue disabled - summarization skipped in production");
+  }
 
   return res.json({
     message: "AI summarization queued",

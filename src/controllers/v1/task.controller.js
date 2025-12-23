@@ -17,7 +17,9 @@ export const createTask = async (req, res) => {
     ...req.body,
     project: req.params.projectId,
   });
-  await redis.del(`tasks:${req.params.projectId}`);
+  if (redis) {
+    await redis.del(`tasks:${req.params.projectId}`);
+  }
   res.json(task);
 };
 
@@ -35,7 +37,7 @@ export const getTasks = async (req, res) => {
   const { page, limit, skip } = getPagination(req.query);
 
   const cacheKey = `tasks:${req.params.projectId}:page:${page}:limit:${limit}`;
-  const cached = await redis.get(cacheKey);
+  const cached = redis ? await redis.get(cacheKey) : null;
 
   if (cached) {
     return res.json(JSON.parse(cached));
@@ -59,7 +61,9 @@ export const getTasks = async (req, res) => {
     data: tasks,
   };
 
-  await redis.set(cacheKey, JSON.stringify(response), "EX", 10);
+  if (redis) {
+    await redis.set(cacheKey, JSON.stringify(response), "EX", 10);
+  }
 
   res.json(response);
 };
@@ -85,7 +89,9 @@ export const updateTask = async (req, res) => {
       .status(404)
       .json({ message: "Task not found or already deleted" });
   }
-  await redis.del(`tasks:${req.params.projectId}`);
+  if (redis) {
+    await redis.del(`tasks:${req.params.projectId}`);
+  }
   res.json(updated);
 };
 
@@ -110,6 +116,8 @@ export const deleteTask = async (req, res) => {
       .status(404)
       .json({ message: "Task not found or already deleted" });
   }
-  await redis.del(`tasks:${req.params.projectId}`);
+  if (redis) {
+    await redis.del(`tasks:${req.params.projectId}`);
+  }
   res.json({ message: "Soft deleted", task: updated });
 };
