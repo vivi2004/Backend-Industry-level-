@@ -3,9 +3,11 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "scripts": {
-    "dev": "nodemon src/server.js"
-  },
+"scripts": {
+  "start": "node src/server.js",
+  "dev": "nodemon src/server.js"
+}
+,
   "repository": {
     "type": "git",
     "url": "git+https://github.com/vivi2004/Backend-Industry-level-.git"
