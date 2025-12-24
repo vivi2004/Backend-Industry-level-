@@ -18,42 +18,48 @@ import jobRoutes from "./routes/v1/job.routes.js";
 import aiRoutes from "./routes/v1/ai.routes.js";
 import passport from "./config/password.js";
 
-
 connectDB();
+
 const app = express();
+
+/* =========================
+   CORS CONFIG (FIXED)
+========================= */
+
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "https://tasks-project-client-n78i.onrender.com",
+];
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow non-browser clients (like curl/postman) and Vite dev server on localhost
+      // allow non-browser tools like Postman
       if (!origin) return callback(null, true);
 
-      if (origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:")) {
+      if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
 
-      // Allow LAN access during development (e.g. http://192.168.x.x:5173 or http://10.x.x.x:5173)
-      if (process.env.NODE_ENV !== "production") {
-        const isLanHttpOrigin = /^http:\/\/\d{1,3}(?:\.\d{1,3}){3}:\d+$/.test(origin);
-        if (isLanHttpOrigin) {
-          return callback(null, true);
-        }
-      }
-
-      return callback(new Error("Not allowed by CORS"));
+      return callback(new Error(`CORS blocked: ${origin}`));
     },
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
-  }),
+  })
 );
+
+// handle preflight requests
+app.options(/.*/, cors());
+
+/* =========================
+   MIDDLEWARES
+========================= */
+
 app.use(express.json());
 app.use(helmet());
-
 app.use(assignRequestId);
-app.use("/api/v1", versionWarning);
-app.use("/api/v1/webhooks", webhookRoutes);
-app.use("/api/v1/upload", uploadProcessRoutes);
-app.use("/api/v1/jobs", jobRoutes);
-app.use("/api/v1/ai", aiRoutes);
 app.use(passport.initialize());
 
 app.use((req, res, next) => {
@@ -62,17 +68,23 @@ app.use((req, res, next) => {
 
   res.on("finish", () => {
     const duration = Date.now() - req.startTime;
-    if (duration > 300) {
-      logger.warn(req, "Slow request", { duration });
-    } else {
-      logger.info(req, "Request completed", { duration });
-    }
+    logger.info(req, "Request completed", { duration });
   });
 
   next();
 });
 
 app.use(globalLimiter);
+
+/* =========================
+   ROUTES
+========================= */
+
+app.use("/api/v1", versionWarning);
+app.use("/api/v1/webhooks", webhookRoutes);
+app.use("/api/v1/upload", uploadProcessRoutes);
+app.use("/api/v1/jobs", jobRoutes);
+app.use("/api/v1/ai", aiRoutes);
 
 app.get("/api/v1/health", (req, res) => {
   res.json({ status: "ok" });
@@ -81,6 +93,10 @@ app.get("/api/v1/health", (req, res) => {
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/projects", projectRoutes);
 app.use("/api/v1/projects/:projectId/tasks", taskRoutes);
+
+/* =========================
+   ERROR HANDLING
+========================= */
 
 app.use(errorHandler);
 
@@ -91,10 +107,14 @@ app.use((err, req, res, next) => {
   });
 
   res.status(500).json({
-    message: "Something went wrong",
+    message: err.message || "Something went wrong",
     reqId: req.id,
   });
 });
+
+/* =========================
+   SERVER
+========================= */
 
 const PORT = Number(process.env.PORT) || 4000;
 
