@@ -7,7 +7,7 @@ import auth from "../../middlewares/auth.js";
 import passport from "passport";
 
 
-const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5173";
 
 const router = Router();
 router.post("/register", authLimiter, validate(registerSchema), register);
@@ -95,7 +95,7 @@ router.get(
   "/google/callback",
   passport.authenticate("google", {
     session: false,
-    failureRedirect: `${FRONTEND_URL}/login`,
+    failureRedirect: `${CLIENT_URL}/login`,
   }),
   (req, res) => {
     const token = req.user?.token;
@@ -106,7 +106,7 @@ router.get(
       sameSite: "lax",
     });
 
-    res.redirect(`${FRONTEND_URL}/dashboard`);
+    res.redirect(`${CLIENT_URL}/dashboard`);
   }
 );
 
